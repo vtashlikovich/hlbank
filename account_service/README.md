@@ -7,7 +7,7 @@ Account service for management of:
 * accounts
 * transactions
 
-Commands processed from REST and message queues.
+Commands processed from the REST API and a message queue.
 
 ## Installation
 
