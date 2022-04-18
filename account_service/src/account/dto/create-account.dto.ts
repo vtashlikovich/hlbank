@@ -1,45 +1,52 @@
-import { IsEmpty, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
-import { Currency } from "../currency.enum";
+import {
+    IsEmpty,
+    IsEnum,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsString,
+    MaxLength,
+} from 'class-validator'
+import { Currency } from '../currency.enum'
 
 export class CreateAccountDto {
-
     @IsOptional()
     @IsString()
     @MaxLength(35)
-    uuid: string;
-    
+    uuid: string
+
     @IsNumber()
     @IsNotEmpty()
-    customer_id: number;
-    
+    customer_id: number
+
     @IsEmpty()
-    status: number;
+    status: number
 
     @IsString()
     @MaxLength(50)
-    label: string;
+    label: string
 
     @IsString()
     @MaxLength(3)
     @IsEnum(Currency)
-    currency: string;
+    currency: string
 
     @IsNumber()
     @IsNotEmpty()
-    bank_id: number;
+    bank_id: number
 
     @IsString()
     @MaxLength(35)
     @IsOptional()
-    iban: string;
+    iban: string
 
     @IsString()
     @MaxLength(30)
     @IsOptional()
-    account_number: string;
+    account_number: string
 
     @IsString()
     @MaxLength(6)
     @IsOptional()
-    sort_code: string;
+    sort_code: string
 }

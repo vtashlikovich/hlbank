@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
-import { AppService } from './app.service';
-import { DatabaseModule } from './database/database.module';
-import { ConfigModule } from '@nestjs/config';
-import { SwaggerModule } from '@nestjs/swagger';
-import { AccountModule } from './account/account.module';
+import { Module } from '@nestjs/common'
+import { AppService } from './app.service'
+import { DatabaseModule } from './database/database.module'
+import { ConfigModule } from '@nestjs/config'
+import { SwaggerModule } from '@nestjs/swagger'
+import { AccountModule } from './account/account.module'
+import { TransactionModule } from './transaction/transaction.module'
+import { CustomerModule } from './customer/customer.module'
+import { CustomerlimitModule } from './customerlimit/customerlimit.module'
+import { BlacklistModule } from './blacklist/blacklist.module'
+import { FeeModule } from './fee/fee.module'
 
 @Module({
     imports: [
@@ -12,7 +17,13 @@ import { AccountModule } from './account/account.module';
             isGlobal: true,
         }),
         DatabaseModule,
-        AccountModule],
+        CustomerModule,
+        AccountModule,
+        TransactionModule,
+        CustomerlimitModule,
+        BlacklistModule,
+        FeeModule,
+    ],
     providers: [AppService],
 })
 export class AppModule {}

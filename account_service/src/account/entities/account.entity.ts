@@ -1,85 +1,97 @@
-import { Column, CreatedAt, Model, Table, UpdatedAt } from 'sequelize-typescript';
-import { DataTypes } from 'sequelize';
-import { Currency } from '../currency.enum';
+import {
+    Column,
+    CreatedAt,
+    Model,
+    Table,
+    UpdatedAt,
+} from 'sequelize-typescript'
+import { DataTypes } from 'sequelize'
+import { Currency } from '../currency.enum'
 
-@Table({tableName:'hlb_account'})
-export class Account extends Model{
+@Table({ tableName: 'hlb_account' })
+export class Account extends Model {
     @Column({
         type: DataTypes.BIGINT,
         autoIncrement: true,
-        primaryKey: true
+        primaryKey: true,
     })
-    id: number;
+    id: number
 
     @Column({
         type: DataTypes.STRING(25),
-        unique: true
+        unique: true,
     })
-    uuid: string;
-    
+    uuid: string
+
+    @Column({
+        allowNull: false,
+        defaultValue: true,
+    })
+    enabled: boolean
+
     @Column({
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
     })
-    customer_id: number;
-    
+    customer_id: number
+
     @Column({
         defaultValue: 1,
-        allowNull: false
+        allowNull: false,
     })
-    status: number;
+    status: number
 
     @Column({
-        type: DataTypes.STRING(50)
+        type: DataTypes.STRING(50),
     })
-    label: string;
+    label: string
 
     @Column({
-        type: DataTypes.ENUM({ values: Object.keys(Currency) })
+        type: DataTypes.ENUM({ values: Object.keys(Currency) }),
     })
-    currency: string;
-
-    @Column({
-        defaultValue: 0,
-        allowNull: false
-    })
-    current_balance: number;
+    currency: string
 
     @Column({
         defaultValue: 0,
-        allowNull: false
+        allowNull: false,
     })
-    onhold_balance: number;
+    current_balance: number
 
     @Column({
         defaultValue: 0,
-        allowNull: false
+        allowNull: false,
     })
-    available_balance: number;
+    onhold_balance: number
 
     @Column({
-        allowNull: false
+        defaultValue: 0,
+        allowNull: false,
     })
-    bank_id: number;
+    available_balance: number
 
     @Column({
-        type: DataTypes.STRING(35)
+        allowNull: false,
     })
-    iban: string;
+    bank_id: number
 
     @Column({
-        type: DataTypes.STRING(30)
+        type: DataTypes.STRING(35),
     })
-    account_number: string;
+    iban: string
 
     @Column({
-        type: DataTypes.STRING(6)
+        type: DataTypes.STRING(30),
     })
-    sort_code: string;
+    account_number: string
+
+    @Column({
+        type: DataTypes.STRING(6),
+    })
+    sort_code: string
 
     @CreatedAt
-    created: Date = new Date();
+    created: Date = new Date()
 
     @UpdatedAt
-    updated: Date = new Date();
+    updated: Date = new Date()
 }
