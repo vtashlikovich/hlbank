@@ -47,6 +47,7 @@ export class TransactionController {
         @Body() createTransactionDto: CreateTransactionDto
     ): Promise<ExpressResponse> {
         let result: Transaction = null
+        console.time('transaction')
 
         try {
             result = await this.transactionService.create(createTransactionDto)
@@ -55,12 +56,16 @@ export class TransactionController {
                 return httpResponse.status(HttpStatus.CONFLICT).send('')
             else {
                 console.debug(error)
+                console.timeEnd('transaction')
                 return httpResponse
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .send('')
+                    .send({
+                        error: error.message
+                    })
             }
         }
-
+        console.timeEnd('transaction')
+        
         return httpResponse.status(HttpStatus.OK).send(result)
     }
 

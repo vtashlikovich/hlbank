@@ -17,6 +17,14 @@ import {
 } from 'src/blacklist/blacklist.service'
 import { ValidationResult } from './dto/validate-transaction.dto'
 
+export enum TransactionStatus {
+    INIT = 1,
+    PROCESSING = 5,
+    ERROR = 10,
+    DONE = 20,
+    CANCELLED = 30
+}
+
 @Injectable()
 export class TransactionService {
     constructor(
@@ -33,7 +41,7 @@ export class TransactionService {
         createTransactionDto: CreateTransactionDto
     ): Promise<ValidationResult> {
         const txSignature = this.createSignature(createTransactionDto)
-        const fee = this.feeService.getFee(createTransactionDto.amount)
+        const fee = this.feeService.calculateFee(createTransactionDto.amount)
         const result = await this.validateWithSignatureAndFee(
             createTransactionDto,
             txSignature,
@@ -98,27 +106,67 @@ export class TransactionService {
         return true
     }
 
+    // TODO: make all write operations in a transaction
     async create(
         createTransactionDto: CreateTransactionDto
     ): Promise<Transaction> {
         const txSignature = this.createSignature(createTransactionDto)
-        const fee = this.feeService.getFee(createTransactionDto.amount)
+        const fee = this.feeService.calculateFee(createTransactionDto.amount)
+        let transactionObject: Transaction = null;
 
-        if (
-            this.validateWithSignatureAndFee(
-                createTransactionDto,
-                txSignature,
-                fee
-            )
-        )
-            // TODO: insert ... where amount > ?
-            // TODO: apply fee, change balance, reserved balance, update monthly limit
-            return this.txRepository.create({
-                ...createTransactionDto,
-                fee,
-                uuid: uniqid('TR').toUpperCase(),
-                signature: txSignature,
-            })
+        try {
+            if (
+                await this.validateWithSignatureAndFee(
+                    createTransactionDto,
+                    txSignature,
+                    fee
+                )
+            ) {
+
+                // generate UUID if not yet set up
+                let uuid: string = createTransactionDto.uuid;
+                if (!uuid)
+                    uuid = uniqid('TR').toUpperCase();
+
+                transactionObject = await this.txRepository.create({
+                    ...createTransactionDto,
+                    fee,
+                    uuid,
+                    signature: txSignature,
+                });
+
+                if (transactionObject) {
+
+                    try {
+                        // update balance, where amount >= amount + fee
+                        await this.accountService.updateBalance(createTransactionDto.account_uid, createTransactionDto.amount + fee);
+
+                        // update monthly limit
+                        await this.customerLimitService.updateLimit(createTransactionDto.customer_uid, createTransactionDto.amount + fee);
+                    } catch(updateError) {
+                        console.debug(`Amount fixation error for account ${createTransactionDto.account_uid}: `, updateError);
+                        
+                        // set transaction status to error
+                        this.updateStatus(uuid, TransactionStatus.ERROR);
+                    }
+                }
+            }
+        } catch (error) {
+            console.debug('Cannot validate or insert a new tranaction: ' + error);
+            throw new Error(error);
+        }
+
+        return transactionObject;
+    }
+
+    updateStatus(uuid: string, status: TransactionStatus): Promise<[count: number]> {
+        return this.txRepository.update({
+            status
+        }, {
+            where: {
+                uuid
+            }
+        });
     }
 
     findAll(): Promise<Transaction[]> {

@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { Account } from './entities/account.entity'
 import { CreateAccountDto } from './dto/create-account.dto'
 import uniqid from 'uniqid'
+import { Op, Sequelize } from 'sequelize'
 
 @Injectable()
 export class AccountService {
@@ -28,6 +29,20 @@ export class AccountService {
                 uuid,
             },
         })
+    }
+
+    updateBalance(account_uid: string, amount: number): Promise<[count: number]> {
+        return this.accountRepository.update({
+            onhold_balance: Sequelize.literal('onhold_balance + ' + amount),
+            available_balance: Sequelize.literal('available_balance - ' + amount),
+        }, {
+            where: {
+                uuid: account_uid,
+                available_balance: {
+                    [Op.gte]: amount
+                }
+            }
+        });
     }
 
     // update(uuid: string, updateAccountDto: UpdateAccountDto): Promise<Account> {

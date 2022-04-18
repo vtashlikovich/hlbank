@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 
 @Injectable()
 export class FeeService {
-    getFee(amount: number): number {
+    calculateFee(amount: number): number {
         let fee = 100
 
         if (amount > 100000) fee = Math.floor(amount * 0.025)
