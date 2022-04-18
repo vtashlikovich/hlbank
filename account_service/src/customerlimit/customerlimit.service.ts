@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { Transaction } from 'sequelize'
 import { Sequelize } from 'sequelize-typescript'
 // import { CreateCustomerlimitDto } from './dto/create-customerlimit.dto';
 // import { UpdateCustomerlimitDto } from './dto/update-customerlimit.dto';
@@ -28,7 +29,7 @@ export class CustomerlimitService {
         })
     }
 
-    async updateLimit(customer_uid: string, amount: number): Promise<boolean> {
+    async updateLimit(transaction: Transaction, customer_uid: string, amount: number): Promise<boolean> {
         const currentDate = new Date()
         const currentYearMonth =
             currentDate.getFullYear() * 100 + currentDate.getMonth() + 1
@@ -38,7 +39,9 @@ export class CustomerlimitService {
             await this.limitRepository.create({
                 customer_uid,
                 volume: amount,
-                month: null
+                month: currentYearMonth
+            }, {
+                transaction
             });
         }
         else
@@ -48,7 +51,8 @@ export class CustomerlimitService {
                 where: {
                     customer_uid,
                     month: currentYearMonth
-                }
+                },
+                transaction
             });
 
         return true;

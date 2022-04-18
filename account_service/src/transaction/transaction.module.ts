@@ -9,6 +9,7 @@ import { CustomerlimitModule } from 'src/customerlimit/customerlimit.module'
 import { BlacklistModule } from 'src/blacklist/blacklist.module'
 import { AccountModule } from 'src/account/account.module'
 import { FeeModule } from 'src/fee/fee.module'
+import { Sequelize } from 'sequelize-typescript'
 
 @Module({
     imports: [
@@ -25,6 +26,10 @@ import { FeeModule } from 'src/fee/fee.module'
         {
             provide: 'TX_REPOSITORY',
             useValue: Transaction,
+        },
+        {
+            provide: 'SEQUELIZE',
+            useExisting: Sequelize
         },
         TransactionService,
     ],

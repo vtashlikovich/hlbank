@@ -3,6 +3,7 @@ import uniqid from 'uniqid'
 import { CreateTransactionDto } from './dto/create-transaction.dto'
 // import { UpdateTransactionDto } from './dto/update-transaction.dto'
 import { Transaction } from './entities/transaction.entity'
+import { Transaction as TransactionSeq } from 'sequelize';
 import objectHash = require('object-hash')
 import { CustomerService } from 'src/customer/customer.service'
 import { Customer } from 'src/customer/entities/customer.entity'
@@ -16,6 +17,7 @@ import {
     BlacklistService,
 } from 'src/blacklist/blacklist.service'
 import { ValidationResult } from './dto/validate-transaction.dto'
+import { Sequelize } from 'sequelize'
 
 export enum TransactionStatus {
     INIT = 1,
@@ -34,7 +36,10 @@ export class TransactionService {
         private accountService: AccountService,
         private customerLimitService: CustomerlimitService,
         private feeService: FeeService,
-        private blacklistService: BlacklistService
+        private blacklistService: BlacklistService,
+        
+        @Inject('SEQUELIZE')
+        private readonly sequelizeInstance: Sequelize,
     ) {}
 
     async validate(
@@ -106,7 +111,6 @@ export class TransactionService {
         return true
     }
 
-    // TODO: make all write operations in a transaction
     async create(
         createTransactionDto: CreateTransactionDto
     ): Promise<Transaction> {
@@ -128,28 +132,38 @@ export class TransactionService {
                 if (!uuid)
                     uuid = uniqid('TR').toUpperCase();
 
+                const transaction: TransactionSeq = await this.sequelizeInstance.transaction({
+                    logging: true,  // Just for debugging purposes
+                });
+                    
                 transactionObject = await this.txRepository.create({
                     ...createTransactionDto,
                     fee,
                     uuid,
                     signature: txSignature,
+                }, {
+                    transaction
                 });
 
                 if (transactionObject) {
 
                     try {
                         // update balance, where amount >= amount + fee
-                        await this.accountService.updateBalance(createTransactionDto.account_uid, createTransactionDto.amount + fee);
+                        await this.accountService.updateBalance(transaction, createTransactionDto.account_uid, createTransactionDto.amount + fee);
 
                         // update monthly limit
-                        await this.customerLimitService.updateLimit(createTransactionDto.customer_uid, createTransactionDto.amount + fee);
+                        await this.customerLimitService.updateLimit(transaction, createTransactionDto.customer_uid, createTransactionDto.amount + fee);
+
+                        transaction.commit();
                     } catch(updateError) {
                         console.debug(`Amount fixation error for account ${createTransactionDto.account_uid}: `, updateError);
-                        
-                        // set transaction status to error
-                        this.updateStatus(uuid, TransactionStatus.ERROR);
+                        transaction.rollback();
+
+                        throw new Error(TransactionError.INTERNAL);
                     }
                 }
+                else
+                    transaction.commit();
             }
         } catch (error) {
             console.debug('Cannot validate or insert a new tranaction: ' + error);
@@ -264,6 +278,7 @@ export class TransactionService {
 }
 
 export enum TransactionError {
+    INTERNAL = 'INTERNAL_ERROR',
     DUPLICATION = 'DUPLICATION',
     USER_BLOCKED = 'USER_BLOCKED',
     ACCOUNT_BLOCKED = 'ACCOUNT_BLOCKED',
