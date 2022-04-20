@@ -1,30 +1,31 @@
-import { Inject, Injectable } from '@nestjs/common'
-import uniqid from 'uniqid'
-import { CreateTransactionDto } from './dto/create-transaction.dto'
+import { Inject, Injectable } from '@nestjs/common';
+import uniqid from 'uniqid';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
 // import { UpdateTransactionDto } from './dto/update-transaction.dto'
-import { Transaction } from './entities/transaction.entity'
+import { Transaction } from './entities/transaction.entity';
 import { Transaction as TransactionSeq } from 'sequelize';
-import objectHash = require('object-hash')
-import { CustomerService } from 'src/customer/customer.service'
-import { Customer } from 'src/customer/entities/customer.entity'
-import { Account } from 'src/account/entities/account.entity'
-import { AccountService } from 'src/account/account.service'
-import { Customerlimit } from 'src/customerlimit/entities/customerlimit.entity'
-import { CustomerlimitService } from 'src/customerlimit/customerlimit.service'
-import { FeeService } from 'src/fee/fee.service'
+import objectHash = require('object-hash');
+import { CustomerService } from 'src/customer/customer.service';
+import { Customer } from 'src/customer/entities/customer.entity';
+import { Account } from 'src/account/entities/account.entity';
+import { AccountService } from 'src/account/account.service';
+import { Customervolume } from 'src/customervolume/entities/customervolume.entity';
+import { CustomervolumeService } from 'src/customervolume/customervolume.service';
+import { FeeService } from 'src/fee/fee.service';
 import {
     BlacklistRecord,
     BlacklistService,
-} from 'src/blacklist/blacklist.service'
-import { ValidationResult } from './dto/validate-transaction.dto'
-import { Sequelize } from 'sequelize'
+} from 'src/blacklist/blacklist.service';
+import { ValidationResult } from './dto/validate-transaction.dto';
+import { Sequelize } from 'sequelize';
+import { ConfigService } from '@nestjs/config';
 
 export enum TransactionStatus {
     INIT = 1,
     PROCESSING = 5,
     ERROR = 10,
     DONE = 20,
-    CANCELLED = 30
+    CANCELLED = 30,
 }
 
 @Injectable()
@@ -34,48 +35,61 @@ export class TransactionService {
         private txRepository: typeof Transaction,
         private customerService: CustomerService,
         private accountService: AccountService,
-        private customerLimitService: CustomerlimitService,
+        private customerVolumeService: CustomervolumeService,
         private feeService: FeeService,
         private blacklistService: BlacklistService,
-        
+        private configService: ConfigService,
+
         @Inject('SEQUELIZE')
-        private readonly sequelizeInstance: Sequelize,
+        private readonly sequelizeInstance: Sequelize
     ) {}
 
     async validate(
         createTransactionDto: CreateTransactionDto
     ): Promise<ValidationResult> {
-        const txSignature = this.createSignature(createTransactionDto)
-        const fee = this.feeService.calculateFee(createTransactionDto.amount)
+        const txSignature = this.createSignature(createTransactionDto);
+        const fee = this.feeService.calculateFee(createTransactionDto.amount);
         const result = await this.validateWithSignatureAndFee(
             createTransactionDto,
             txSignature,
             fee
-        )
+        );
         if (result)
             return {
                 fee,
-            }
-        else return null
+            };
+        else return null;
     }
 
     async validateWithSignatureAndFee(
         createTransactionDto: CreateTransactionDto,
         txSignature: string,
-        fee: number
+        fee: number,
+        skipBalanceCheck = false
     ): Promise<boolean> {
         const customer: Customer = await this.customerService.findOne(
             createTransactionDto.customer_uid
-        )
+        );
+        if (!customer)
+            throw new Error(TransactionError.CUSTOMER_NOT_FOUND);
+
         const account: Account = await this.accountService.findOne(
             createTransactionDto.account_uid
-        )
+        );
+        if (!account)
+            throw new Error(TransactionError.ACCOUNT_NOT_FOUND);
 
-        if (!(await this.checkIfCustomerEnabled(customer)))
-            throw new Error(TransactionError.USER_BLOCKED)
+        // check internal payee account, dependent on transaction type
 
-        if (!(await this.checkIfAccountEnabled(account)))
-            throw new Error(TransactionError.ACCOUNT_BLOCKED)
+        if (!(await this.checkIfCustomerEnabled(customer))) {
+            console.warn(`Acc ${account.uuid}: Customer ${createTransactionDto.customer_uid} is disabled`);
+            throw new Error(TransactionError.USER_BLOCKED);
+        }
+
+        if (!(await this.checkIfAccountEnabled(account))) {
+            console.warn(`Acc ${account.uuid}: account is disabled`);
+            throw new Error(TransactionError.ACCOUNT_BLOCKED);
+        }
 
         if (
             await this.checkIfTransactionLimitHit(
@@ -83,108 +97,156 @@ export class TransactionService {
                 createTransactionDto.amount + fee
             )
         )
-            throw new Error(TransactionError.LIMIT_HIT)
+            throw new Error(TransactionError.LIMIT_HIT);
 
         if (
             await this.checkIfPayeeBlacklisted({
-                bic: createTransactionDto.party_bic,
-                iban: createTransactionDto.party_iban,
+                bic: createTransactionDto.party_bic?createTransactionDto.party_bic:null,
+                iban: createTransactionDto.party_iban?createTransactionDto.party_iban:null,
                 bankaccount:
-                    createTransactionDto.party_bank +
-                    createTransactionDto.party_account_number,
-                sortcode: createTransactionDto.party_sortcode,
+                    createTransactionDto.party_account_number?
+                        (createTransactionDto.party_bank +
+                        createTransactionDto.party_account_number):null,
+                sortcode: createTransactionDto.party_sortcode?createTransactionDto.party_sortcode:null,
             })
-        )
-            throw new Error(TransactionError.PAYEE_BLACKLIST)
+        ) {
+            console.warn(`Acc ${account.uuid}: Payee account details are in the blacklist`);
+            throw new Error(TransactionError.PAYEE_BLACKLIST);
+        }
 
-        if (
-            !(await this.checkIfAccountBalanceAvailable(
+        if (!skipBalanceCheck &&
+            !(this.checkIfAccountBalanceAvailable(
                 account,
                 createTransactionDto.amount + fee
             ))
         )
-            throw new Error(TransactionError.INSUFFICIENT_FUNDS)
+            throw new Error(TransactionError.INSUFFICIENT_FUNDS);
 
-        if (!(await this.checkIfIdempotent(txSignature)))
-            throw new Error(TransactionError.DUPLICATION)
+        if (!(await this.checkIfIdempotent(txSignature))) {
+            console.warn(`Acc ${account.uuid}: A duplicated transaction exists, signature: ${txSignature}`);
+            throw new Error(TransactionError.DUPLICATION);
+        }
 
-        return true
+        return true;
     }
 
     async create(
         createTransactionDto: CreateTransactionDto
     ): Promise<Transaction> {
-        const txSignature = this.createSignature(createTransactionDto)
-        const fee = this.feeService.calculateFee(createTransactionDto.amount)
+        const txSignature = this.createSignature(createTransactionDto);
+        const fee = this.feeService.calculateFee(createTransactionDto.amount);
         let transactionObject: Transaction = null;
+        let transaction: TransactionSeq = null;
 
         try {
+            console.log(`Transaction ${createTransactionDto.uuid} for accoount ${createTransactionDto.account_uid} validating`);
+
             if (
                 await this.validateWithSignatureAndFee(
                     createTransactionDto,
                     txSignature,
-                    fee
+                    fee,
+                    true // do not check balance, it will be checked later
                 )
             ) {
-
                 // generate UUID if not yet set up
                 let uuid: string = createTransactionDto.uuid;
-                if (!uuid)
-                    uuid = uniqid('TR').toUpperCase();
+                if (!uuid) uuid = uniqid('TR').toUpperCase();
 
-                const transaction: TransactionSeq = await this.sequelizeInstance.transaction({
-                    logging: true,  // Just for debugging purposes
-                });
-                    
-                transactionObject = await this.txRepository.create({
-                    ...createTransactionDto,
-                    fee,
-                    uuid,
-                    signature: txSignature,
-                }, {
-                    transaction
-                });
+                transaction =
+                    await this.sequelizeInstance.transaction({
+                        logging: this.configService.get<string>('SQL_LOG') == 'true',
+                    });
 
-                if (transactionObject) {
+                console.log(`Transaction ${uuid} for accoount ${createTransactionDto.account_uid} creation started`);
 
-                    try {
-                        // update balance, where amount >= amount + fee
-                        await this.accountService.updateBalance(transaction, createTransactionDto.account_uid, createTransactionDto.amount + fee);
+                const account: Account = await this.accountService.findOneAndLock(transaction, createTransactionDto.account_uid);
 
-                        // update monthly limit
-                        await this.customerLimitService.updateLimit(transaction, createTransactionDto.customer_uid, createTransactionDto.amount + fee);
+                if (account) {
+                    if (account.available_balance >= createTransactionDto.amount + fee) {
+                        transactionObject = await this.txRepository.create(
+                            {
+                                ...createTransactionDto,
+                                fee,
+                                uuid,
+                                signature: txSignature,
+                            },
+                            {
+                                transaction,
+                            }
+                        );
 
-                        transaction.commit();
-                    } catch(updateError) {
-                        console.debug(`Amount fixation error for account ${createTransactionDto.account_uid}: `, updateError);
-                        transaction.rollback();
+                        if (transactionObject) {
+                            try {
+                                console.log(`Transaction ${uuid}: update balance of account ${createTransactionDto.account_uid}`);
+                                // update balance, where amount >= amount + fee
+                                await this.accountService.updateBalance(
+                                    transaction,
+                                    createTransactionDto.account_uid,
+                                    createTransactionDto.amount + fee
+                                );
 
-                        throw new Error(TransactionError.INTERNAL);
+                                console.log(`Transaction ${uuid}: update monthly volume for customer ${createTransactionDto.customer_uid}`);
+                                // update monthly limit
+                                await this.customerVolumeService.updateVolume(
+                                    transaction,
+                                    createTransactionDto.customer_uid,
+                                    createTransactionDto.amount + fee
+                                );
+
+                                console.log(`Transaction ${uuid} created with success`);
+
+                                await transaction.commit();
+                            } catch (updateError) {
+                                console.error(
+                                    `Transaction ${uuid}: amount fixation error `,
+                                    updateError
+                                );
+                                await transaction.rollback();
+
+                                throw new Error(TransactionError.INTERNAL);
+                            }
+                        }
+                        else
+                            throw new Error(`Transaction ${uuid} creation failed`);
                     }
+                    else
+                        throw new Error(TransactionError.INSUFFICIENT_FUNDS);
                 }
                 else
-                    transaction.commit();
+                    throw new Error(`Account ${createTransactionDto.account_uid} not found while creation transaction`);
             }
         } catch (error) {
-            console.debug('Cannot validate or insert a new tranaction: ' + error);
+            if (transaction)
+                await transaction.rollback();
+
+            console.error(
+                `Transaction ${createTransactionDto.uuid}: Cannot validate or insert a new tranaction: ` + error
+            );
             throw new Error(error);
         }
 
         return transactionObject;
     }
 
-    updateStatus(uuid: string, status: TransactionStatus): Promise<[count: number]> {
-        return this.txRepository.update({
-            status
-        }, {
-            where: {
-                uuid
+    updateStatus(
+        uuid: string,
+        status: TransactionStatus
+    ): Promise<[count: number]> {
+        return this.txRepository.update(
+            {
+                status,
+            },
+            {
+                where: {
+                    uuid,
+                },
             }
-        });
+        );
     }
 
     findAll(): Promise<Transaction[]> {
-        return this.txRepository.findAll()
+        return this.txRepository.findAll();
     }
 
     findOne(uuid: string): Promise<Transaction> {
@@ -192,11 +254,11 @@ export class TransactionService {
             where: {
                 uuid,
             },
-        })
+        });
     }
 
     createSignature(createTransactionDto: CreateTransactionDto): string {
-        const timeStamp = new Date().toISOString().split('T')
+        const timeStamp = new Date().toISOString().split('T');
 
         const bean4hashing = {
             customer_uid: createTransactionDto.customer_uid,
@@ -219,9 +281,9 @@ export class TransactionService {
             account_to: createTransactionDto.account_to,
             provider: createTransactionDto.provider,
             date: timeStamp[0] + timeStamp[1].substring(0, 4),
-        }
+        };
 
-        return objectHash(bean4hashing)
+        return objectHash(bean4hashing, {algorithm: 'md5'});
     }
 
     async checkIfIdempotent(signature: string): Promise<boolean> {
@@ -229,51 +291,58 @@ export class TransactionService {
             where: {
                 signature,
             },
-        })
+        });
 
-        return recordsNum == 0
+        return recordsNum == 0;
     }
 
     async checkIfCustomerEnabled(customer: Customer): Promise<boolean> {
-        return customer && customer.enabled
+        return customer && customer.enabled;
     }
 
     async checkIfAccountEnabled(account: Account): Promise<boolean> {
-        return account && account.enabled
+        return account && account.enabled;
     }
 
     async checkIfTransactionLimitHit(
         customer: Customer,
         amount: number
     ): Promise<boolean> {
-        let limitHit = false
+        let limitHit = false;
 
-        const currentDate = new Date()
+        const currentDate = new Date();
         const currentYearMonth =
-            currentDate.getFullYear() * 100 + currentDate.getMonth() + 1
-        const monthlyLimit: Customerlimit =
-            await this.customerLimitService.findOneByCustomerMonth(
+            currentDate.getFullYear() * 100 + currentDate.getMonth() + 1;
+        const monthlyLimit: Customervolume =
+            await this.customerVolumeService.findOneByCustomerMonth(
                 customer.uuid,
                 currentYearMonth
-            )
+            );
 
-        if (monthlyLimit && monthlyLimit.volume)
-            limitHit = monthlyLimit.volume + amount >= customer.monthly_limit
+        if (monthlyLimit && monthlyLimit.volume) {
+            limitHit = monthlyLimit.volume + amount >= customer.monthly_limit;
 
-        return limitHit
+            if (limitHit)
+                console.warn(`Customer ${customer.uuid} monthly limit is hit (${customer.monthly_limit}), current volume: ${monthlyLimit.volume}`);
+        }
+
+        return limitHit;
     }
 
     async checkIfPayeeBlacklisted(
         blacklistRecord: BlacklistRecord
     ): Promise<boolean> {
-        return (await this.blacklistService.findOccurance(blacklistRecord)) > 0
+        return (await this.blacklistService.findOccurance(blacklistRecord)) > 0;
     }
 
-    async checkIfAccountBalanceAvailable(
+    checkIfAccountBalanceAvailable(
         account: Account,
         amount: number
-    ): Promise<boolean> {
-        return account && account.available_balance >= amount
+    ): boolean {
+        const result = account && account.available_balance >= amount;
+        if (account && !result)
+            console.warn(`Acc ${account.uuid}: not enough funds - ${account.available_balance} vs ${amount}`);
+        return result;
     }
 }
 
@@ -285,4 +354,6 @@ export enum TransactionError {
     INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
     LIMIT_HIT = 'LIMIT_HIT',
     PAYEE_BLACKLIST = 'PAYEE_BLACKLIST',
+    CUSTOMER_NOT_FOUND = 'CUSTOMER_NOT_FOUND',
+    ACCOUNT_NOT_FOUND = 'ACCOUNT_NOT_FOUND'
 }

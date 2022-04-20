@@ -1,0 +1,20 @@
+{
+  "name": "loadtests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "create_transactions.js",
+  "scripts": {
+    "start": "k6 run create_transactions.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@withshepherd/faker": "^5.5.5",
+    "k6": "^0.0.0"
+  },
+  "dependencies": {
+    "artillery": "^2.0.0-14"
+  }
+}

@@ -1,13 +1,14 @@
 import {
     Column,
     CreatedAt,
+    Index,
     Model,
     Table,
     UpdatedAt,
-} from 'sequelize-typescript'
-import { DataTypes } from 'sequelize'
-import { Currency } from 'src/account/currency.enum'
-import { TransactionType } from '../util/transaction.types'
+} from 'sequelize-typescript';
+import { DataTypes } from 'sequelize';
+import { Currency } from 'src/account/currency.enum';
+import { TransactionType } from '../util/transaction.types';
 
 @Table({ tableName: 'hlb_transaction' })
 export class Transaction extends Model {
@@ -16,134 +17,135 @@ export class Transaction extends Model {
         autoIncrement: true,
         primaryKey: true,
     })
-    id: number
+    id: number;
 
     // @Index('my-index')
     @Column({
         type: DataTypes.STRING(25),
         unique: true,
     })
-    uuid: string
+    uuid: string;
 
     @Column({
         type: DataTypes.STRING(25),
         allowNull: false,
     })
-    customer_uid: string
+    customer_uid: string;
 
     @Column({
         type: DataTypes.STRING(25),
         allowNull: false,
     })
-    account_uid: string
+    account_uid: string;
 
     @Column({
         type: DataTypes.SMALLINT,
         allowNull: false,
     })
-    type: TransactionType
+    type: TransactionType;
 
     @Column({
         defaultValue: 1,
         allowNull: false,
     })
-    status: number
+    status: number;
 
     @Column({
         allowNull: false,
     })
-    amount: number
+    amount: number;
 
     @Column({
         type: DataTypes.ENUM({ values: Object.keys(Currency) }),
     })
-    currency: number
+    currency: number;
 
     @Column({ allowNull: true })
-    fee: number
+    fee: number;
 
     @Column({
         defaultValue: 0,
     })
-    party_amount: number
+    party_amount: number;
 
     @Column({
         type: DataTypes.ENUM({ values: Object.keys(Currency) }),
     })
-    party_currency: number
+    party_currency: number;
 
     @Column({
         type: DataTypes.STRING(25),
         allowNull: true,
     })
-    fx_rate_uid: number
+    fx_rate_uid: number;
 
     @Column({ allowNull: true })
-    fx_rate: number
+    fx_rate: number;
 
     @Column({ type: DataTypes.STRING(14) })
-    party_bic: string
+    party_bic: string;
 
     @Column({ type: DataTypes.STRING(40) })
-    party_iban: string
+    party_iban: string;
 
     @Column({ type: DataTypes.STRING(30) })
-    party_account_number: string
+    party_account_number: string;
 
     @Column({ type: DataTypes.STRING(6) })
-    party_sortcode: string
+    party_sortcode: string;
 
     @Column({ type: DataTypes.STRING(30) })
-    party_bank: string
+    party_bank: string;
 
     @Column({ type: DataTypes.STRING(16) })
-    party_bank_country: string
+    party_bank_country: string;
 
     @Column({ type: DataTypes.SMALLINT })
-    party_type: number
+    party_type: number;
 
     @Column({ type: DataTypes.STRING(100) })
-    party_name: string
+    party_name: string;
 
     @Column({ type: DataTypes.STRING(16) })
-    party_country: string
+    party_country: string;
 
     @Column({ type: DataTypes.STRING(150) })
-    party_address: string
+    party_address: string;
 
     @Column({ type: DataTypes.STRING(10) })
-    party_zipcode: string
+    party_zipcode: string;
 
     @Column({ type: DataTypes.STRING(30) })
-    party_city: string
+    party_city: string;
 
     @Column({ type: DataTypes.STRING(100) })
-    party_contact: string
+    party_contact: string;
 
     @Column({ type: DataTypes.STRING(25) })
-    party_phone: string
+    party_phone: string;
 
     @Column({ type: DataTypes.STRING(50) })
-    party_email: string
+    party_email: string;
 
     @Column({ type: DataTypes.BIGINT })
-    account_to: number
+    account_to: number;
 
     @Column({ type: DataTypes.BIGINT })
-    account_from: number
+    account_from: number;
 
     @Column({ type: DataTypes.STRING(10) })
-    provider: string
+    provider: string;
 
     @Column({ type: DataTypes.STRING(255) })
-    description: string
+    description: string;
 
+    @Index('tx_signature')
     @Column({ type: DataTypes.STRING(45) })
-    signature: string
+    signature: string;
 
     @CreatedAt
-    created: Date = new Date()
+    created: Date = new Date();
 
     @UpdatedAt
-    updated: Date = new Date()
+    updated: Date = new Date();
 }

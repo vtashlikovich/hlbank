@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common'
-import { SequelizeModule } from '@nestjs/sequelize'
-import { DatabaseModule } from 'src/database/database.module'
-import { CustomerService } from './customer.service'
-import { Customer } from './entities/customer.entity'
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { DatabaseModule } from 'src/database/database.module';
+import { CustomerService } from './customer.service';
+import { Customer } from './entities/customer.entity';
 
 @Module({
     imports: [DatabaseModule, SequelizeModule.forFeature([Customer])],

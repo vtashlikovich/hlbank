@@ -1,12 +1,13 @@
 import {
     Column,
     CreatedAt,
+    Index,
     Model,
     Table,
     UpdatedAt,
-} from 'sequelize-typescript'
-import { DataTypes } from 'sequelize'
-import { Currency } from '../currency.enum'
+} from 'sequelize-typescript';
+import { DataTypes } from 'sequelize';
+import { Currency } from '../currency.enum';
 
 @Table({ tableName: 'hlb_account' })
 export class Account extends Model {
@@ -15,83 +16,84 @@ export class Account extends Model {
         autoIncrement: true,
         primaryKey: true,
     })
-    id: number
+    id: number;
 
+    @Index('account_uuid')
     @Column({
         type: DataTypes.STRING(25),
         unique: true,
     })
-    uuid: string
+    uuid: string;
 
     @Column({
         allowNull: false,
         defaultValue: true,
     })
-    enabled: boolean
+    enabled: boolean;
 
     @Column({
         type: DataTypes.BIGINT,
         allowNull: false,
     })
-    customer_id: number
+    customer_id: number;
 
     @Column({
         defaultValue: 1,
         allowNull: false,
     })
-    status: number
+    status: number;
 
     @Column({
         type: DataTypes.STRING(50),
     })
-    label: string
+    label: string;
 
     @Column({
         type: DataTypes.ENUM({ values: Object.keys(Currency) }),
     })
-    currency: string
+    currency: string;
 
     @Column({
         defaultValue: 0,
         allowNull: false,
     })
-    current_balance: number
+    current_balance: number;
 
     @Column({
         defaultValue: 0,
         allowNull: false,
     })
-    onhold_balance: number
+    onhold_balance: number;
 
     @Column({
         defaultValue: 0,
         allowNull: false,
     })
-    available_balance: number
+    available_balance: number;
 
     @Column({
         allowNull: false,
     })
-    bank_id: number
+    bank_id: number;
 
     @Column({
         type: DataTypes.STRING(35),
     })
-    iban: string
+    iban: string;
 
     @Column({
         type: DataTypes.STRING(30),
     })
-    account_number: string
+    account_number: string;
 
     @Column({
         type: DataTypes.STRING(6),
     })
-    sort_code: string
+    sort_code: string;
 
     @CreatedAt
-    created: Date = new Date()
+    created: Date = new Date();
 
     @UpdatedAt
-    updated: Date = new Date()
+    updated: Date = new Date();
 }

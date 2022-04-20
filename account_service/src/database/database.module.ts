@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common'
-import { SequelizeModule } from '@nestjs/sequelize'
-import { ConfigModule, ConfigService } from '@nestjs/config'
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
     imports: [
@@ -16,6 +16,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
                 database: configService.get<string>('DB_NAME'),
                 autoLoadModels: true,
                 synchronize: true,
+                logging: configService.get<string>('SQL_LOG') == 'true'
             }),
             inject: [ConfigService],
         }),

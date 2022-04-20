@@ -6,10 +6,10 @@ import {
     Patch,
     Param,
     Delete,
-} from '@nestjs/common'
-import { BlacklistService } from './blacklist.service'
-import { CreateBlacklistDto } from './dto/create-blacklist.dto'
-import { UpdateBlacklistDto } from './dto/update-blacklist.dto'
+} from '@nestjs/common';
+import { BlacklistService } from './blacklist.service';
+import { CreateBlacklistDto } from './dto/create-blacklist.dto';
+import { UpdateBlacklistDto } from './dto/update-blacklist.dto';
 
 @Controller('blacklist')
 export class BlacklistController {

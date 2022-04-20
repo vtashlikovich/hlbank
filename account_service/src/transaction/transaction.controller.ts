@@ -6,13 +6,13 @@ import {
     Param,
     HttpStatus,
     Res,
-} from '@nestjs/common'
-import { TransactionError, TransactionService } from './transaction.service'
-import { CreateTransactionDto } from './dto/create-transaction.dto'
+} from '@nestjs/common';
+import { TransactionError, TransactionService } from './transaction.service';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
 // import { UpdateTransactionDto } from './dto/update-transaction.dto'
-import { Transaction } from './entities/transaction.entity'
-import { Response as ExpressResponse } from 'express'
-import { ValidationResult } from './dto/validate-transaction.dto'
+import { Transaction } from './entities/transaction.entity';
+import { Response as ExpressResponse } from 'express';
+import { ValidationResult } from './dto/validate-transaction.dto';
 
 @Controller('transaction')
 export class TransactionController {
@@ -23,22 +23,24 @@ export class TransactionController {
         @Res() httpResponse: ExpressResponse,
         @Body() createTransactionDto: CreateTransactionDto
     ): Promise<ExpressResponse> {
-        let result: ValidationResult = null
+        let result: ValidationResult = null;
 
-        console.time('timer')
+        const tick = new Date().getTime();
+        console.time('timer' + tick);
+
         try {
             result = await this.transactionService.validate(
                 createTransactionDto
-            )
+            );
         } catch (error) {
-            console.timeEnd('timer')
+            console.timeEnd('timer' + tick);
             return httpResponse.status(HttpStatus.CONFLICT).send({
                 code: error.message,
-            })
+            });
         }
 
-        console.timeEnd('timer')
-        return httpResponse.status(HttpStatus.OK).send(result)
+        console.timeEnd('timer' + tick);
+        return httpResponse.status(HttpStatus.OK).send(result);
     }
 
     @Post()
@@ -46,37 +48,39 @@ export class TransactionController {
         @Res() httpResponse: ExpressResponse,
         @Body() createTransactionDto: CreateTransactionDto
     ): Promise<ExpressResponse> {
-        let result: Transaction = null
-        console.time('transaction')
+        let result: Transaction = null;
+
+        const tick = new Date().getTime();
+        console.time('transaction' + tick);
 
         try {
-            result = await this.transactionService.create(createTransactionDto)
+            result = await this.transactionService.create(createTransactionDto);
         } catch (error) {
             if (error.message == TransactionError.DUPLICATION)
-                return httpResponse.status(HttpStatus.CONFLICT).send('')
+                return httpResponse.status(HttpStatus.CONFLICT).send('');
             else {
-                console.debug(error)
-                console.timeEnd('transaction')
+                console.debug(error);
+                console.timeEnd('transaction' + tick);
                 return httpResponse
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .send({
-                        error: error.message
-                    })
+                        error: error.message,
+                    });
             }
         }
-        console.timeEnd('transaction')
-        
-        return httpResponse.status(HttpStatus.OK).send(result)
+        console.timeEnd('transaction' + tick);
+
+        return httpResponse.status(HttpStatus.OK).send(result);
     }
 
     @Get()
     findAll() {
-        return this.transactionService.findAll()
+        return this.transactionService.findAll();
     }
 
     @Get(':id')
     findOne(@Param('id') id: string) {
-        return this.transactionService.findOne(id)
+        return this.transactionService.findOne(id);
     }
 
     // @Patch(':id')

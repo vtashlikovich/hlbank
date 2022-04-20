@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common'
-import { BlacklistService } from './blacklist.service'
-import { BlacklistController } from './blacklist.controller'
-import { Blacklist } from './entities/blacklist.entity'
-import { DatabaseModule } from 'src/database/database.module'
-import { SequelizeModule } from '@nestjs/sequelize'
+import { Module } from '@nestjs/common';
+import { BlacklistService } from './blacklist.service';
+import { BlacklistController } from './blacklist.controller';
+import { Blacklist } from './entities/blacklist.entity';
+import { DatabaseModule } from 'src/database/database.module';
+import { SequelizeModule } from '@nestjs/sequelize';
 
 @Module({
     imports: [DatabaseModule, SequelizeModule.forFeature([Blacklist])],

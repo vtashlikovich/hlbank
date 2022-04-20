@@ -6,14 +6,14 @@ import {
     Patch,
     Param,
     Delete,
-} from '@nestjs/common'
-import { CustomerlimitService } from './customerlimit.service'
+} from '@nestjs/common';
+import { CustomervolumeService } from './customervolume.service';
 // import { CreateCustomerlimitDto } from './dto/create-customerlimit.dto';
 // import { UpdateCustomerlimitDto } from './dto/update-customerlimit.dto';
 
-@Controller('customerlimit')
-export class CustomerlimitController {
-    constructor(private readonly customerlimitService: CustomerlimitService) {}
+@Controller('customervolume')
+export class CustomervolumeController {
+    constructor(private readonly customerlimitService: CustomervolumeService) {}
 
     //   @Post()
     //   create(@Body() createCustomerlimitDto: CreateCustomerlimitDto) {

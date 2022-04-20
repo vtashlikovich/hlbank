@@ -1,3 +1,3 @@
 export type ValidationResult = {
-    fee: number
-}
+    fee: number;
+};

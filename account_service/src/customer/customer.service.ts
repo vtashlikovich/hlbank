@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { Customer } from './entities/customer.entity'
+import { Inject, Injectable } from '@nestjs/common';
+import { Customer } from './entities/customer.entity';
 
 @Injectable()
 export class CustomerService {
@@ -13,6 +13,6 @@ export class CustomerService {
             where: {
                 uuid,
             },
-        })
+        });
     }
 }
