@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class AppService {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        private readonly configService: ConfigService
+        ) {}
 
     getHello(): string {
         return 'Hello World!, ' + this.configService.get<string>('DB_NAME');

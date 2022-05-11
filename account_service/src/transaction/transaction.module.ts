@@ -10,7 +10,10 @@ import { BlacklistModule } from 'src/blacklist/blacklist.module';
 import { AccountModule } from 'src/account/account.module';
 import { FeeModule } from 'src/fee/fee.module';
 import { Sequelize } from 'sequelize-typescript';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TransactionMQService } from './transactionmq.service';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { TransactionMQController } from './transactionmq.controller';
 
 @Module({
     imports: [
@@ -22,8 +25,25 @@ import { ConfigModule } from '@nestjs/config';
         CustomervolumeModule,
         BlacklistModule,
         FeeModule,
+        ClientsModule.registerAsync([
+            {
+                name: 'PUB_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => (
+                    configService.get<string>('MQ_PRODUCER') == 'true'?{
+                    transport: Transport.RMQ,
+                    options: {
+                        queue: configService.get<string>('RABBIT_QUEUE'),
+                        urls: [configService.get<string>('RABBIT_URL')],
+                        noAck: false,
+                        queueOptions: { durable: false }
+                    },
+                }:{}),
+                inject: [ConfigService],
+            },
+        ]),
     ],
-    controllers: [TransactionController],
+    controllers: [TransactionController, TransactionMQController],
     providers: [
         {
             provide: 'TX_REPOSITORY',
@@ -34,7 +54,8 @@ import { ConfigModule } from '@nestjs/config';
             useExisting: Sequelize,
         },
         TransactionService,
+        TransactionMQService,
     ],
-    exports: [TransactionService],
+    exports: [TransactionService, TransactionMQService],
 })
 export class TransactionModule {}

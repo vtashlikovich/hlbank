@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import uniqid from 'uniqid';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
-// import { UpdateTransactionDto } from './dto/update-transaction.dto'
 import { Transaction } from './entities/transaction.entity';
 import { Transaction as TransactionSeq } from 'sequelize';
 import objectHash = require('object-hash');
@@ -44,6 +43,25 @@ export class TransactionService {
         private readonly sequelizeInstance: Sequelize
     ) {}
 
+    async quickValidate(
+        createTransactionDto: CreateTransactionDto
+    ): Promise<ValidationResult> {
+        const txSignature = this.createSignature(createTransactionDto);
+        const fee = this.feeService.calculateFee(createTransactionDto.amount);
+        const result = await this.validateWithSignatureAndFee(
+            createTransactionDto,
+            txSignature,
+            fee,
+            false,
+            true
+        );
+        if (result)
+            return {
+                fee,
+            };
+        else return null;
+    }
+
     async validate(
         createTransactionDto: CreateTransactionDto
     ): Promise<ValidationResult> {
@@ -65,30 +83,31 @@ export class TransactionService {
         createTransactionDto: CreateTransactionDto,
         txSignature: string,
         fee: number,
-        skipBalanceCheck = false
+        skipBalanceCheck = false,
+        skipBlacklistCheck = false
     ): Promise<boolean> {
         const customer: Customer = await this.customerService.findOne(
             createTransactionDto.customer_uid
         );
         if (!customer)
-            throw new Error(TransactionError.CUSTOMER_NOT_FOUND);
+            throw(new Error(TransactionError.CUSTOMER_NOT_FOUND));
 
         const account: Account = await this.accountService.findOne(
             createTransactionDto.account_uid
         );
         if (!account)
-            throw new Error(TransactionError.ACCOUNT_NOT_FOUND);
+            throw(new Error(TransactionError.ACCOUNT_NOT_FOUND));
 
         // check internal payee account, dependent on transaction type
 
         if (!(await this.checkIfCustomerEnabled(customer))) {
             console.warn(`Acc ${account.uuid}: Customer ${createTransactionDto.customer_uid} is disabled`);
-            throw new Error(TransactionError.USER_BLOCKED);
+            throw(new Error(TransactionError.USER_BLOCKED));
         }
 
         if (!(await this.checkIfAccountEnabled(account))) {
             console.warn(`Acc ${account.uuid}: account is disabled`);
-            throw new Error(TransactionError.ACCOUNT_BLOCKED);
+            throw(new Error(TransactionError.ACCOUNT_BLOCKED));
         }
 
         if (
@@ -97,9 +116,9 @@ export class TransactionService {
                 createTransactionDto.amount + fee
             )
         )
-            throw new Error(TransactionError.LIMIT_HIT);
+            throw(new Error(TransactionError.LIMIT_HIT));
 
-        if (
+        if (!skipBlacklistCheck &&
             await this.checkIfPayeeBlacklisted({
                 bic: createTransactionDto.party_bic?createTransactionDto.party_bic:null,
                 iban: createTransactionDto.party_iban?createTransactionDto.party_iban:null,
@@ -111,7 +130,7 @@ export class TransactionService {
             })
         ) {
             console.warn(`Acc ${account.uuid}: Payee account details are in the blacklist`);
-            throw new Error(TransactionError.PAYEE_BLACKLIST);
+            throw(new Error(TransactionError.PAYEE_BLACKLIST));
         }
 
         if (!skipBalanceCheck &&
@@ -120,11 +139,11 @@ export class TransactionService {
                 createTransactionDto.amount + fee
             ))
         )
-            throw new Error(TransactionError.INSUFFICIENT_FUNDS);
+            throw(new Error(TransactionError.INSUFFICIENT_FUNDS));
 
         if (!(await this.checkIfIdempotent(txSignature))) {
             console.warn(`Acc ${account.uuid}: A duplicated transaction exists, signature: ${txSignature}`);
-            throw new Error(TransactionError.DUPLICATION);
+            throw(new Error(TransactionError.DUPLICATION));
         }
 
         return true;
@@ -133,6 +152,7 @@ export class TransactionService {
     async create(
         createTransactionDto: CreateTransactionDto
     ): Promise<Transaction> {
+        console.time('uid');
         const txSignature = this.createSignature(createTransactionDto);
         const fee = this.feeService.calculateFee(createTransactionDto.amount);
         let transactionObject: Transaction = null;
@@ -140,6 +160,9 @@ export class TransactionService {
 
         try {
             console.log(`Transaction ${createTransactionDto.uuid} for accoount ${createTransactionDto.account_uid} validating`);
+
+            // TEST
+            // if (console) throw(new Error(TransactionError.INSUFFICIENT_FUNDS));
 
             if (
                 await this.validateWithSignatureAndFee(
@@ -151,7 +174,7 @@ export class TransactionService {
             ) {
                 // generate UUID if not yet set up
                 let uuid: string = createTransactionDto.uuid;
-                if (!uuid) uuid = uniqid('TR').toUpperCase();
+                if (!uuid) uuid = this.generateUID();
 
                 transaction =
                     await this.sequelizeInstance.transaction({
@@ -204,26 +227,54 @@ export class TransactionService {
                                 );
                                 await transaction.rollback();
 
-                                throw new Error(TransactionError.INTERNAL);
+                                throw(new Error(TransactionError.INTERNAL));
                             }
                         }
                         else
-                            throw new Error(`Transaction ${uuid} creation failed`);
+                            throw(new Error(`Transaction ${uuid} creation failed`));
                     }
                     else
-                        throw new Error(TransactionError.INSUFFICIENT_FUNDS);
+                        throw(new Error(TransactionError.INSUFFICIENT_FUNDS));
                 }
                 else
-                    throw new Error(`Account ${createTransactionDto.account_uid} not found while creation transaction`);
+                    throw(new Error(TransactionError.ACCOUNT_NOT_FOUND));
             }
         } catch (error) {
             if (transaction)
                 await transaction.rollback();
 
-            console.error(
+            console.warn(
                 `Transaction ${createTransactionDto.uuid}: Cannot validate or insert a new tranaction: ` + error
             );
-            throw new Error(error);
+            
+            throw(error);
+        }
+
+        return transactionObject;
+    }
+
+    async createTransactionWithError(
+        createTransactionDto: CreateTransactionDto
+    ): Promise<Transaction> {
+        let transactionObject: Transaction = null;
+        const txSignature = this.createSignature(createTransactionDto);
+
+        try {
+            console.log(`Transaction ${createTransactionDto.uuid} for accoount ${createTransactionDto.account_uid} saving with ERROR status`);
+
+            transactionObject = await this.txRepository.create(
+                {
+                    ...createTransactionDto,
+                    fee: 0,
+                    signature: txSignature,
+                    status: TransactionStatus.ERROR
+                }
+            );
+        } catch (error) {
+            console.error(
+                `Transaction ${createTransactionDto.uuid}: Cannot save transaction with ERROR status`
+            );
+            throw(error);
         }
 
         return transactionObject;
@@ -343,6 +394,10 @@ export class TransactionService {
         if (account && !result)
             console.warn(`Acc ${account.uuid}: not enough funds - ${account.available_balance} vs ${amount}`);
         return result;
+    }
+
+    generateUID(): string {
+        return uniqid('TR').toUpperCase();
     }
 }
 

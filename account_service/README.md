@@ -15,6 +15,33 @@ Commands processed from the REST API and a message queue.
 $ npm i
 ```
 
+### Tune pure REST API service (producer and consumer)
+
+Environment variables (or via .enb) should be set up in the following way:
+
+```bash
+MQ_PRODUCER=false
+MQ_CONSUMER=false
+```
+
+### Tune hybrid REST API/MQ service (producer and consumer)
+
+Environment variables (or via .enb) should be set up in the following way:
+
+```bash
+MQ_PRODUCER=true
+MQ_CONSUMER=true
+```
+
+### Tune pure MQ service (consumer)
+
+Environment variables (or via .enb) should be set up in the following way:
+
+```bash
+MQ_PRODUCER=false
+MQ_CONSUMER=true
+```
+
 ## Running the app
 
 ```bash

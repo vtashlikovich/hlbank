@@ -1,3 +1,7 @@
+# App specific
+utilities/
+docs/
+
 # Logs
 logs
 *.log

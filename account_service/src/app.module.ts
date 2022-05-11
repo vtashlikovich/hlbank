@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SwaggerModule } from '@nestjs/swagger';
 import { AccountModule } from './account/account.module';
 import { TransactionModule } from './transaction/transaction.module';
@@ -24,6 +24,6 @@ import { FeeModule } from './fee/fee.module';
         BlacklistModule,
         FeeModule,
     ],
-    providers: [AppService],
+    providers: [AppService]
 })
 export class AppModule {}
