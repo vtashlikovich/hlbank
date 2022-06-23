@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CustomerService } from 'src/customer/customer.service';
 import { TransactionService } from './transaction.service';
 
 describe('TransactionService', () => {
@@ -7,7 +8,13 @@ describe('TransactionService', () => {
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [TransactionService],
-        }).compile();
+        })
+        .useMocker((token) => {
+            if (token === CustomerService) {
+              return { findOne: jest.fn().mockResolvedValue({}) };
+            }
+          })
+        .compile();
 
         service = module.get<TransactionService>(TransactionService);
     });

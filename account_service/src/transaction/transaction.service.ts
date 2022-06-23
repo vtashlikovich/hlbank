@@ -86,6 +86,9 @@ export class TransactionService {
         skipBalanceCheck = false,
         skipBlacklistCheck = false
     ): Promise<boolean> {
+        const tick = new Date().getTime();
+        console.time('txvalidate' + tick);
+
         const customer: Customer = await this.customerService.findOne(
             createTransactionDto.customer_uid
         );
@@ -146,13 +149,15 @@ export class TransactionService {
             throw(new Error(TransactionError.DUPLICATION));
         }
 
+        console.timeEnd('txvalidate' + tick);
+
         return true;
     }
 
     async create(
         createTransactionDto: CreateTransactionDto
     ): Promise<Transaction> {
-        console.time('uid');
+        // console.time('uid');
         const txSignature = this.createSignature(createTransactionDto);
         const fee = this.feeService.calculateFee(createTransactionDto.amount);
         let transactionObject: Transaction = null;
@@ -176,10 +181,13 @@ export class TransactionService {
                 let uuid: string = createTransactionDto.uuid;
                 if (!uuid) uuid = this.generateUID();
 
+                const tickTxCreate = new Date().getTime();
+                console.time('tx-prepare' + tickTxCreate);
                 transaction =
                     await this.sequelizeInstance.transaction({
                         logging: this.configService.get<string>('SQL_LOG') == 'true',
                     });
+                console.timeEnd('tx-prepare' + tickTxCreate);
 
                 console.log(`Transaction ${uuid} for accoount ${createTransactionDto.account_uid} creation started`);
 
@@ -201,6 +209,8 @@ export class TransactionService {
 
                         if (transactionObject) {
                             try {
+                                const tickTxBalance = new Date().getTime();
+                                console.time('tx-balance' + tickTxBalance);
                                 console.log(`Transaction ${uuid}: update balance of account ${createTransactionDto.account_uid}`);
                                 // update balance, where amount >= amount + fee
                                 await this.accountService.updateBalance(
@@ -208,7 +218,10 @@ export class TransactionService {
                                     createTransactionDto.account_uid,
                                     createTransactionDto.amount + fee
                                 );
+                                console.timeEnd('tx-balance' + tickTxBalance);
 
+                                const tickVolume = new Date().getTime();
+                                console.time('tx-volume' + tickVolume);
                                 console.log(`Transaction ${uuid}: update monthly volume for customer ${createTransactionDto.customer_uid}`);
                                 // update monthly limit
                                 await this.customerVolumeService.updateVolume(
@@ -216,10 +229,14 @@ export class TransactionService {
                                     createTransactionDto.customer_uid,
                                     createTransactionDto.amount + fee
                                 );
+                                console.timeEnd('tx-volume' + tickVolume);
 
                                 console.log(`Transaction ${uuid} created with success`);
 
+                                const tickCommit = new Date().getTime();
+                                console.time('tx-commit' + tickCommit);
                                 await transaction.commit();
+                                console.timeEnd('tx-commit' + tickCommit);
                             } catch (updateError) {
                                 console.error(
                                     `Transaction ${uuid}: amount fixation error `,

@@ -26,7 +26,7 @@ Content-Type: application/json
     "fx_rate_uid": "FX34234324",
     "party_bic": "ALPEAT22",
     "party_iban": "AT611904300234573201",
-    "party_account_number": "1",
+    "party_account_number": "1234",
     "party_sortcode": "",
     "party_bank": "FastClood",
     "party_bank_country": "NO",

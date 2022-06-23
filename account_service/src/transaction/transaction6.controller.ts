@@ -12,19 +12,19 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Response as ExpressResponse } from 'express';
 import { ValidationResult } from './dto/validate-transaction.dto';
 import { TransactionMessageDto } from './dto/message-transaction.dto';
-import { MessageTypes, TransactionMQService } from './transactionmq.service';
+import { MessageTypes, TransactionMQ6Service } from './transactionmq6.service';
 import { Transaction } from './entities/transaction.entity';
 import { ConfigService } from '@nestjs/config';
 
 export const MQ_PROTOCOL_VERSION = '1.0';
 
 @Controller('transaction')
-export class TransactionController {
+export class Transaction6Controller {
     private producesMessage;
 
     constructor(
         private readonly transactionService: TransactionService,
-        private readonly transactionMQService: TransactionMQService,
+        private readonly transactionMQService: TransactionMQ6Service,
         private readonly configService: ConfigService
         ) {
             this.producesMessage = configService.get<string>('REST_PRODUCES_MSG') == 'true';
@@ -60,13 +60,6 @@ export class TransactionController {
         return '';
     }
 
-    /**
-     * Main transaction create method.
-     * Works dependant on configration
-     * @param httpResponse 
-     * @param createTransactionDto 
-     * @returns 
-     */
     @Post()
     async createTx(
         @Res() httpResponse: ExpressResponse,
@@ -78,12 +71,6 @@ export class TransactionController {
             return await this.createViaREST(httpResponse, createTransactionDto);
     }
 
-    /**
-     * Generate new transaction ID and transfer a message creation command to queue
-     * @param httpResponse 
-     * @param createTransactionDto 
-     * @returns 
-     */
     async createViaMessage(
         @Res() httpResponse: ExpressResponse,
         @Body() createTransactionDto: CreateTransactionDto
@@ -127,12 +114,6 @@ export class TransactionController {
         return httpResponse.status(HttpStatus.OK).send({transactionuid: transactionUID});
     }
 
-    /**
-     * Create new transaction in DB
-     * @param httpResponse 
-     * @param createTransactionDto 
-     * @returns 
-     */
     async createViaREST(
         @Res() httpResponse: ExpressResponse,
         @Body() createTransactionDto: CreateTransactionDto

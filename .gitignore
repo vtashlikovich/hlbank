@@ -1,6 +1,7 @@
 # App specific
 utilities/
 docs/
+*-lock.json
 
 # Logs
 logs

@@ -1,0 +1,12 @@
+RUN:
+
+# export DEBUG=http,http:capture,http:response
+# Mac:
+# DEBUG=http,http:capture,http:response artillery ...
+
+artillery run scenario.yml --output reports/report-2022-05-04-max30-2acc.json
+
+artillery report reports/report-2022-04-22.json
+
+pm2 start npm --name "producer" -- run start:prod
+pm2 start npm --name "consumer" -- run start:prod

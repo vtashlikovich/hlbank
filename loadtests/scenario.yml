@@ -1,0 +1,73 @@
+### CONFIGURATION ###########################
+config:
+  target: 'http://localhost:3000'
+  tls:
+    rejectUnauthorized: false
+  http:
+    # Responses have to be sent within 10 seconds or the request will be aborted
+    timeout: 10
+  ensure:
+    # Force artillery to exit with a non-zero code when a condition is not met, useful for CI/CD
+    p95: 500
+    maxErrorRate: 5
+
+  payload:
+    path: "scenario500.csv"
+    fields:
+      - "customer_uid"
+      - "account_uid"
+
+  #-- DEFAULTS --------------------------------
+  defaults:
+    headers:
+      content-type: 'application/json'
+
+  # This is the pre-request function we are using to create the data
+  processor: 'generate-data.js'
+
+  #-- PHASES --------------------------------
+  phases:
+    - duration: 10
+      arrivalRate: 3
+      name: 'Warm up 1'
+    - duration: 10
+      arrivalRate: 10
+      name: 'Warm up 2'
+    - duration: 60
+      arrivalRate: 20
+      name: 'Heat wave'
+
+### SCENARIOS ###########################
+scenarios:
+- name: 'Create transaction'
+  flow:
+    - function: 'generateRandomData'
+    - post:
+        url: '/transaction'
+        json:
+          email: '{{ email }}'
+          customer_uid: '{{ customer_uid }}'
+          account_uid: '{{ account_uid }}'
+          type: 1
+          amount: 100
+          currency: 'USD'
+          fx_rate_uid: 'FX34234324'
+          party_bic: '{{ party_bic }}'
+          party_iban: '{{ party_iban }}'
+          party_account_number: '{{ party_account_number }}'
+          party_sortcode: ''
+          party_bank: 'FastClood'
+          party_bank_country: '{{ party_bank_country }}'
+          party_type: 1
+          party_name: '{{ party_name }}'
+          party_country: '{{ party_country }}'
+          party_address: 'Olympus Mons'
+          party_zipcode: '{{ party_zipcode }}'
+          party_city: '{{ party_city }}'
+          party_contact: '{{ party_contact }}'
+          party_phone: '{{ party_phone }}'
+          party_email: '{{ party_email }}'
+          provider: 'GALAXY'
+          description: '{{ description }}'
+        expect:
+          - statusCode: 200

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
+require('dotenv').config();
 
-amqp.connect('amqp://localhost', function(error0, connection) {
+amqp.connect(process.env.RABBIT_URL, function(error0, connection) {
     if (error0) {
         throw error0;
     }
@@ -11,7 +12,7 @@ amqp.connect('amqp://localhost', function(error0, connection) {
             throw error1;
         }
 
-        var queue = 'transactions';
+        var queue = process.env.RABBIT_QUEUE;
         var msg = { pattern: 'create-tx', 
             data: {
                 "customer_uid": "CUFDFDFDF",

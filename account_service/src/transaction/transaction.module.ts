@@ -30,7 +30,7 @@ import { TransactionMQController } from './transactionmq.controller';
                 name: 'PUB_SERVICE',
                 imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => (
-                    configService.get<string>('MQ_PRODUCER') == 'true'?{
+                    configService.get<string>('REST_PRODUCES_MSG') == 'true'?{
                     transport: Transport.RMQ,
                     options: {
                         queue: configService.get<string>('RABBIT_QUEUE'),

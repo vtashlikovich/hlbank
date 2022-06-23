@@ -10,25 +10,21 @@ export class TransactionMQService {
     ) {}
 
     async sendTransactionMessage(messageType: MessageTypes, newTransaction: TransactionMessageDto) {
-        console.log('sending a mesage, type=', messageType);
+        console.log('sending a message, type=', messageType, '..');
 
         const record = new RmqRecordBuilder(newTransaction)
         .setOptions({
             headers: {
-            ['x-version']: MQ_PROTOCOL_VERSION,
+                ['x-version']: MQ_PROTOCOL_VERSION
             },
             priority: 3,
         })
         .build();
-        
+
         // just put to the queue
-        return await this.publishService.emit(MessageTypes.NEW_TRANSACTION, record);
+        await this.publishService.emit(MessageTypes.NEW_TRANSACTION, record)
 
-        // put to the queue and sibscribe to the processing events
-        // return await this.publishService.send(MessageTypes.NEW_TRANSACTION, record)
-        // .subscribe({next: console.log, error: console.error});
-
-        // return await this.publishService.send(MessageTypes.NEW_TRANSACTION, record).toPromise()
+        console.log('..message created');
     }
 }
 

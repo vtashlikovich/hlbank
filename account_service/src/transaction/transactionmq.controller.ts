@@ -15,6 +15,9 @@ export class TransactionMQController {
     public async processCreateTransactionMessage(@Payload() newTransaction: TransactionMessageDto, 
         @Ctx() context: RmqContext) {
 
+        const tick = new Date().getTime();
+        console.time('transaction' + tick);
+
         const channel = context.getChannelRef();
         const orginalMessage = context.getMessage();
 
@@ -30,7 +33,12 @@ export class TransactionMQController {
         
         let saveErrorTransaction = false;
         try {
+
+            const tick2 = new Date().getTime();
+            console.time('transactionsave' + tick2);
             await this.transactionService.create(newTransaction);
+            console.timeEnd('transactionsave' + tick2);
+
             channel.ack(orginalMessage);
         }
         catch (error) {
@@ -38,11 +46,13 @@ export class TransactionMQController {
             saveErrorTransaction = error.message in TransactionError;
             if (error.message == TransactionError.DUPLICATION) {
                 console.warn(`Duplicated transaction has been detected from the queue. Rejecting`);
+                
                 channel.ack(orginalMessage);
                 saveErrorTransaction = false;
             }
             else if (!saveErrorTransaction) {
                 console.error(`transaction ${newTransaction.uuid} error is not recognized, getting back to the queue`);
+                
                 channel.nack(orginalMessage);
             }
         }
@@ -52,12 +62,16 @@ export class TransactionMQController {
                 console.error(`saving transaction ${newTransaction.uuid} with ERROR state`);
                 // TODO: save the reason of the transaction error
                 await this.transactionService.createTransactionWithError(newTransaction);
+                
                 channel.ack(orginalMessage);
             }
             catch (error) {
                 console.error(`Error saving transaction ${newTransaction.uuid} with ERROR state`);
+                
                 channel.nack(orginalMessage);
             }
         }
+
+        console.timeEnd('transaction' + tick);
     }
 }
