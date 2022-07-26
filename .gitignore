@@ -2,6 +2,14 @@
 utilities/
 docs/
 *-lock.json
+DB_backup/
+*.gz
+target/
+.idea
+.vscode
+.DS_Store
+*.zip
+application.properties
 
 # Logs
 logs

@@ -1,0 +1,33 @@
+server.port = 3000
+spring.application.name = hlbank-processing
+
+spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.hibernate.ddl-auto=none
+hibernate.hbm2ddl.auto=none
+
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.datasource.url=jdbc:postgresql://HOST:5432/DB_NAME
+spring.datasource.username=USER
+spring.datasource.password=PASSWORD
+
+spring.sql.init.mode=always
+spring.sql.init.continue-on-error=true
+
+rabbit.uri=amqps://USER:PASSWORD@HOST:PORT
+
+spring.jackson.date-format=com.fasterxml.jackson.databind.util.ISO8601DateFormat
+spring.jackson.deserialization.read-unknown-enum-values-as-null=true
+
+logging.level.org.springframework=INFO
+logging.level.com.hlbank=TRACE
+logging.level.root=ERROR
+logging.level.web=INFO
+logging.level.org.springframework.orm.jpa=DEBUG
+logging.level.org.springframework.transaction=DEBUG
+
+logging.file.path=.
+logging.file.name=app.log
+logging.pattern.file=%d %p %c{1.} [%t] %m%n
+logging.pattern.console=%d{HH:mm:ss.SSS} %-5level - %msg%n

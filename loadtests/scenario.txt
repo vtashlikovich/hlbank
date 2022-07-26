@@ -8,5 +8,10 @@ artillery run scenario.yml --output reports/report-2022-05-04-max30-2acc.json
 
 artillery report reports/report-2022-04-22.json
 
-pm2 start npm --name "producer" -- run start:prod
-pm2 start npm --name "consumer" -- run start:prod
+artillery run scenario.yml --output reports/report-2022-07-21-max50-500acc.json
+
+pm2 start dist/main.js
+
+artillery run scenario.yml --output reports/report-2022-07-23-max50-500acc.json
+
+artillery run scenario.yml --output reports/report-2022-07-21-max500-500acc.json
